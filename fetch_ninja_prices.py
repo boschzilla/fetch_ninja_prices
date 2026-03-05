@@ -1,33 +1,40 @@
 """
-Fetches current prices from poe.ninja for Standard league and saves to poe_ninja_prices.json.
+Fetches current prices from poe.ninja and saves to poe_ninja_prices.json.
+
+Usage:
+  python fetch_ninja_prices.py                   # fetch Standard league
+  python fetch_ninja_prices.py --league Settlers  # fetch a specific league
+  python fetch_ninja_prices.py --list-leagues     # print available leagues and exit
 """
+import argparse
 import json
 import time
 import urllib.request
 import urllib.error
 from datetime import datetime
 
-BASE_CURRENCY_URL = "https://poe.ninja/api/data/currencyoverview?league=Standard&type={}"
-BASE_ITEM_URL = "https://poe.ninja/api/data/itemoverview?league=Standard&type={}"
+LEAGUES_URL = "https://api.pathofexile.com/leagues?type=main&compact=1"
+BASE_CURRENCY_URL = "https://poe.ninja/api/data/currencyoverview?league={league}&type={type}"
+BASE_ITEM_URL = "https://poe.ninja/api/data/itemoverview?league={league}&type={type}"
 
 CATEGORIES = [
-    ("Currency",          BASE_CURRENCY_URL, "currency"),
-    ("Fragment",          BASE_CURRENCY_URL, "currency"),
-    ("UniqueWeapon",      BASE_ITEM_URL,     "item"),
-    ("UniqueArmour",      BASE_ITEM_URL,     "item"),
-    ("UniqueAccessory",   BASE_ITEM_URL,     "item"),
-    ("UniqueFlask",       BASE_ITEM_URL,     "item"),
-    ("UniqueJewel",       BASE_ITEM_URL,     "item"),
-    ("SkillGem",          BASE_ITEM_URL,     "item"),
-    ("DivinationCard",    BASE_ITEM_URL,     "item"),
-    ("Fossil",            BASE_ITEM_URL,     "item"),
-    ("Resonator",         BASE_ITEM_URL,     "item"),
-    ("Essence",           BASE_ITEM_URL,     "item"),
-    ("Scarab",            BASE_ITEM_URL,     "item"),
-    ("Oil",               BASE_ITEM_URL,     "item"),
-    ("Tattoo",            BASE_ITEM_URL,     "item"),
-    ("Omen",              BASE_ITEM_URL,     "item"),
-    ("UniqueMap",         BASE_ITEM_URL,     "item"),
+    ("Currency",          "currency", "currency"),
+    ("Fragment",          "currency", "currency"),
+    ("UniqueWeapon",      "item",     "item"),
+    ("UniqueArmour",      "item",     "item"),
+    ("UniqueAccessory",   "item",     "item"),
+    ("UniqueFlask",       "item",     "item"),
+    ("UniqueJewel",       "item",     "item"),
+    ("SkillGem",          "item",     "item"),
+    ("DivinationCard",    "item",     "item"),
+    ("Fossil",            "item",     "item"),
+    ("Resonator",         "item",     "item"),
+    ("Essence",           "item",     "item"),
+    ("Scarab",            "item",     "item"),
+    ("Oil",               "item",     "item"),
+    ("Tattoo",            "item",     "item"),
+    ("Omen",              "item",     "item"),
+    ("UniqueMap",         "item",     "item"),
 ]
 
 HEADERS = {
@@ -88,15 +95,43 @@ def parse_items(data: dict, category_key: str) -> list:
     return result
 
 
+def list_leagues():
+    """Fetch and print available leagues from the GGG API."""
+    print("Fetching available leagues...")
+    try:
+        req = urllib.request.Request(LEAGUES_URL, headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        leagues = [entry["id"] for entry in data]
+        print("Available leagues:")
+        for name in leagues:
+            print(f"  {name}")
+    except Exception as e:
+        print(f"ERROR fetching leagues: {e}")
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Fetch poe.ninja prices to poe_ninja_prices.json")
+    parser.add_argument("--league", default="Standard", help="League name (default: Standard)")
+    parser.add_argument("--list-leagues", action="store_true", help="List available leagues and exit")
+    args = parser.parse_args()
+
+    if args.list_leagues:
+        list_leagues()
+        return
+
+    league = args.league
     combined = {}
     summary = {}
     errors = []
 
-    print(f"Starting poe.ninja price fetch at {datetime.now().isoformat()}\n")
+    print(f"Starting poe.ninja price fetch for league '{league}' at {datetime.now().isoformat()}\n")
 
-    for (cat_type, url_template, kind) in CATEGORIES:
-        url = url_template.format(cat_type)
+    for (cat_type, endpoint_kind, kind) in CATEGORIES:
+        if endpoint_kind == "currency":
+            url = BASE_CURRENCY_URL.format(league=league, type=cat_type)
+        else:
+            url = BASE_ITEM_URL.format(league=league, type=cat_type)
         print(f"Fetching {cat_type} ... ", end="", flush=True)
         try:
             data = fetch_url(url)
@@ -125,7 +160,7 @@ def main():
 
     output = {
         "fetchedAt": datetime.utcnow().isoformat() + "Z",
-        "league": "Standard",
+        "league": league,
         "summary": summary,
         "errors": errors,
         "data": combined,

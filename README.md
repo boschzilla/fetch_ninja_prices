@@ -1,6 +1,6 @@
 # fetch_ninja_prices.py
 
-Fetches current item prices from [poe.ninja](https://poe.ninja) for the **Standard** league and saves them to a single JSON file.
+Fetches current item prices from [poe.ninja](https://poe.ninja) and saves them to a single JSON file. Defaults to the **Standard** league; any league can be specified via a command-line switch.
 
 ## Requirements
 
@@ -9,8 +9,15 @@ No third-party packages — uses only the Python standard library (`urllib`, `js
 ## Usage
 
 ```
-python fetch_ninja_prices.py
+python fetch_ninja_prices.py                        # fetch Standard league (default)
+python fetch_ninja_prices.py --league Settlers      # fetch a specific league
+python fetch_ninja_prices.py --list-leagues         # print available leagues and exit
 ```
+
+| Switch | Description |
+|---|---|
+| `--league NAME` | League to fetch prices for (default: `Standard`) |
+| `--list-leagues` | Print available leagues from the GGG API and exit |
 
 Output is written to `C:\poe\poe_ninja_prices.json`.
 
@@ -95,13 +102,3 @@ Requests are spaced 0.5 s apart to be polite to the poe.ninja API.
 - All items include `chaosValue`. Items also carry `divineValue` and `exaltedValue` where poe.ninja provides them.
 - `errors` lists any categories that failed to fetch; their `data` entry will be an empty array.
 
-## Changing the League
-
-Edit the two constants near the top of the file:
-
-```python
-BASE_CURRENCY_URL = "https://poe.ninja/api/data/currencyoverview?league=Standard&type={}"
-BASE_ITEM_URL     = "https://poe.ninja/api/data/itemoverview?league=Standard&type={}"
-```
-
-Replace `Standard` with your target league name (e.g. `Settlers`, `Hardcore`).
